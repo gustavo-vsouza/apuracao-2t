@@ -119,6 +119,7 @@
     const fim = S.br && S.br.pst >= 100 && S.br.and === "f";
     S.timer = setTimeout(atualizar, (fim ? C.intervaloFinalSeg : C.intervaloSeg) * 1000);
   }
+  $("btn-atualizar").addEventListener("click", () => { $("checado").textContent = "consultando o TSE…"; atualizar(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - S.ultimoOk > 15000) atualizar(); });
 
   // ---------- render ----------
@@ -139,7 +140,21 @@
     $("pst").textContent = x ? fp(x.pst) : "—";
     $("pbar").style.width = (x ? x.pst : 0) + "%";
     $("secoes").textContent = x ? `${fi(x.st)} de ${fi(x.ts)} seções` : "—";
-    $("hora").textContent = x && x.hg ? `TSE ${x.dg || ""} ${x.hg}` : "aguardando TSE (17h)";
+    $("hora").textContent = x && x.hg ? `TSE ${x.hg}` : "aguardando TSE";
+    const hv = S.ultimoOk ? new Date(S.ultimoOk).toLocaleTimeString("pt-BR") : "—";
+    const tse = horaTSE(x);
+    const parado = tse && x.pst < 100 ? Math.floor((Date.now() - tse) / 60000) : 0;
+    const av = $("aviso-tse");
+    av.hidden = !(parado >= 10);
+    if (parado >= 10) av.textContent = `O TSE não publica dados novos há ${parado} min (última totalização ${x.hg}). O app segue consultando a cada ${C.intervaloSeg}s e atualiza sozinho quando o TSE voltar.`;
+    $("checado").textContent = `app conferiu às ${hv} · próxima em ${C.intervaloSeg}s`;
+  }
+  // dg "25/10/2026" + hg "17:06:31" no horário de Brasília → Date
+  function horaTSE(x) {
+    if (!x || !x.dg || !x.hg) return null;
+    const [d, m, a] = x.dg.split("/").map(Number), [h, mi, s] = x.hg.split(":").map(Number);
+    const t = Date.UTC(a, m - 1, d, h + 3, mi, s || 0);
+    return isNaN(t) ? null : t;
   }
   function setSplit(ida, idb, pa, pb) {
     $(ida).style.width = (pa || 0) + "%";
