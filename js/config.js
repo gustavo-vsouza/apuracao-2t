@@ -14,8 +14,9 @@ window.CFG = {
     "13": { nome: "Lula", curto: "Lula", partido: "PT", lado: "vermelho" },
   },
 
-  intervaloSeg: 30,        // atualização durante a apuração
-  intervaloFinalSeg: 300,  // depois de 100% apurado
-  intervaloEscolaSeg: 120, // boletins de urna da escola aberta
+  intervaloSeg: 1,         // Brasil + recorte aberto: a cada segundo
+  varreduraSeg: 15,        // demais estados: quando o Brasil muda ou a cada 15 s
+  intervaloFinalSeg: 60,   // depois de 100% apurado
+  intervaloEscolaSeg: 20,  // boletins de urna da escola aberta
   concorrenciaBU: 6,       // downloads simultâneos de boletins (limite do TSE: 100 req/s por IP)
 };

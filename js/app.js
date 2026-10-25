@@ -89,38 +89,66 @@
     const d = new Date();
     return { dg: d.toLocaleDateString("pt-BR"), hg: d.toLocaleTimeString("pt-BR"), ts, st, pst: (st / ts) * 100, te: ele, c: Math.round(ele * .8 * st / ts), a: Math.round(ele * .2 * st / ts), vv, vb: Math.round(vv * .02), tvn: Math.round(vv * .03), cands: { [NA]: { vap: a }, [NB]: { vap: vv - a } } };
   }
-  async function lerU(abr) { return SIM ? simU(abr) : parseU(await getJSON(urlU(abr))); }
+  async function lerU(abr) { return SIM ? simU(abr) : parseU(await getJSON(urlU(abr), { cache: "no-store" })); }
 
   // ---------- ciclo de atualização ----------
-  async function atualizar() {
-    const alvos = ["br", ...UFS, "zz"];
-    if (S.sel.uf && S.sel.mun) alvos.push(S.sel.uf + S.sel.mun);
-    const res = await pool(alvos, 12, lerU);
-    let ok = 0;
+  // A cada segundo: Brasil + recorte aberto (estado/cidade). Os demais estados entram
+  // quando o arquivo do Brasil muda ou a cada C.varreduraSeg segundos.
+  let rodando = false, ultimaVarredura = 0, chaveBR = "";
+  const assinatura = (x) => (x ? `${x.dg}|${x.hg}|${x.st}|${va(x)}|${vb(x)}` : "");
+  function guardar(alvos, res) {
+    let ok = 0, mudou = false;
     alvos.forEach((abr, i) => {
       const r = res[i];
-      if (r && !r.erro) {
-        ok++;
-        if (abr === "br") S.br = r; else if (abr.length === 2) S.ufs[abr] = r; else S.muns[abr] = r;
-      }
+      if (!r || r.erro) return;
+      ok++;
+      const ant = abr === "br" ? S.br : abr.length === 2 ? S.ufs[abr] : S.muns[abr];
+      if (assinatura(ant) !== assinatura(r)) mudou = true;
+      if (abr === "br") S.br = r; else if (abr.length === 2) S.ufs[abr] = r; else S.muns[abr] = r;
     });
-    $("live-dot").className = "dot " + (ok ? "on" : "err");
-    if (ok) {
-      S.ultimoOk = Date.now();
-      try { localStorage.setItem("ap2t.cache", JSON.stringify({ br: S.br, ufs: S.ufs, t: S.ultimoOk })); } catch (e) {}
-    } else if (!S.br) {
-      toast("Sem resposta do TSE agora — tentando de novo em instantes.");
+    return { ok, mudou };
+  }
+  async function atualizar(tudo) {
+    if (rodando) return;
+    rodando = true;
+    try {
+      const rapidos = ["br"];
+      if (S.sel.uf) rapidos.push(S.sel.uf);
+      if (S.sel.uf && S.sel.mun) rapidos.push(S.sel.uf + S.sel.mun);
+      const a = guardar(rapidos, await pool(rapidos, 3, lerU));
+      let ok = a.ok, mudou = a.mudou;
+      const k = assinatura(S.br);
+      const brMudou = k !== chaveBR; chaveBR = k;
+      if (tudo || brMudou || Date.now() - ultimaVarredura > C.varreduraSeg * 1000) {
+        const resto = [...UFS, "zz"].filter((u) => !rapidos.includes(u));
+        const b = guardar(resto, await pool(resto, 8, lerU));
+        ok += b.ok; mudou = mudou || b.mudou;
+        ultimaVarredura = Date.now();
+      }
+      $("live-dot").className = "dot " + (ok ? "on" : "err");
+      if (ok) S.ultimoOk = Date.now();
+      else if (!S.br) toast("Sem resposta do TSE agora — tentando de novo em instantes.");
+      if (mudou) {
+        try { localStorage.setItem("ap2t.cache", JSON.stringify({ br: S.br, ufs: S.ufs, t: S.ultimoOk })); } catch (e) {}
+        render();
+        piscar();
+      } else renderProgresso();
+    } finally {
+      rodando = false;
+      agendar();
     }
-    render();
-    agendar();
   }
   function agendar() {
     clearTimeout(S.timer);
     const fim = S.br && S.br.pst >= 100 && S.br.and === "f";
     S.timer = setTimeout(atualizar, (fim ? C.intervaloFinalSeg : C.intervaloSeg) * 1000);
   }
-  $("btn-atualizar").addEventListener("click", () => { $("checado").textContent = "consultando o TSE…"; atualizar(); });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - S.ultimoOk > 15000) atualizar(); });
+  function piscar() {
+    const el = $("pst"); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+  }
+  setInterval(renderProgresso, 1000);
+  $("btn-atualizar").addEventListener("click", () => { $("checado").textContent = "consultando o TSE…"; atualizar(true); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) atualizar(true); });
 
   // ---------- render ----------
   function render() {
@@ -146,8 +174,9 @@
     const parado = tse && x.pst < 100 ? Math.floor((Date.now() - tse) / 60000) : 0;
     const av = $("aviso-tse");
     av.hidden = !(parado >= 10);
-    if (parado >= 10) av.textContent = `O TSE não publica dados novos há ${parado} min (última totalização ${x.hg}). O app segue consultando a cada ${C.intervaloSeg}s e atualiza sozinho quando o TSE voltar.`;
-    $("checado").textContent = `app conferiu às ${hv} · próxima em ${C.intervaloSeg}s`;
+    if (parado >= 10) av.textContent = `O TSE não publica dados novos há ${parado} min (última totalização ${x.hg}). O app segue consultando a cada segundo e atualiza sozinho quando o TSE voltar.`;
+    const ha = S.ultimoOk ? Math.max(0, Math.round((Date.now() - S.ultimoOk) / 1000)) : null;
+    $("checado").textContent = ha == null ? "conectando ao TSE…" : `ao vivo · conferido às ${hv}` + (ha > 3 ? ` (há ${ha}s)` : "");
   }
   // dg "25/10/2026" + hg "17:06:31" no horário de Brasília → Date
   function horaTSE(x) {
@@ -512,6 +541,6 @@
   preencherUFs();
   render();
   const selIni = { ...S.sel };
-  atualizar();
+  atualizar(true);
   if (selIni.uf) escolherUF(selIni.uf).then(() => { if (selIni.mun) escolherMun(selIni.mun); });
 })();

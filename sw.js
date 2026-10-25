@@ -1,6 +1,6 @@
 // Service worker: guarda o app para abrir rápido e offline.
 // Os dados do TSE (outro domínio) nunca passam por aqui — sempre vêm frescos da rede.
-const V = "ap2t-v3";
+const V = "ap2t-v4";
 const SHELL = ["./", "index.html", "style.css", "js/config.js", "js/mapa.js", "js/ber.js", "js/app.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/favicon.svg"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
