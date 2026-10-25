@@ -1,0 +1,47 @@
+name: Publicar app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache do arquivo de locais do TSE
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/eleitorado_local_votacao_2026.zip
+          key: locais-2026-v1
+
+      - name: Gerar lista de escolas (locais de votação)
+        continue-on-error: true
+        run: python3 tools/gerar_locais.py
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

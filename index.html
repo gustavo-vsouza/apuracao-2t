@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Apuração 2T</title>
+  <meta name="description" content="Apuração em tempo real do 2º turno presidencial 2026 — dados oficiais do TSE.">
+  <meta name="theme-color" content="#06080c">
+  <meta name="color-scheme" content="dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Apuração 2T">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <header class="top">
+    <div class="brand">
+      <span class="dot" id="live-dot"></span>
+      <div>
+        <div class="brand-t">APURAÇÃO<span class="sep">//</span>2º TURNO</div>
+        <div class="brand-s">Presidente · 25.10.2026 · TSE</div>
+      </div>
+    </div>
+    <button class="chip" id="btn-install" hidden>Instalar app</button>
+  </header>
+
+  <main>
+    <!-- progresso -->
+    <section class="progress card">
+      <div class="row-b">
+        <span class="lbl">URNAS APURADAS</span>
+        <span class="mono big-g" id="pst">—</span>
+      </div>
+      <div class="pbar"><i id="pbar"></i></div>
+      <div class="row-b small">
+        <span id="secoes">—</span>
+        <span id="hora">aguardando TSE</span>
+      </div>
+    </section>
+
+    <!-- escopo -->
+    <nav class="scope card" aria-label="Recorte">
+      <div class="crumbs" id="crumbs"></div>
+      <div class="selects">
+        <label><span>Estado</span><select id="sel-uf"><option value="">Brasil</option></select></label>
+        <label><span>Cidade</span><select id="sel-mun" disabled><option value="">—</option></select></label>
+      </div>
+    </nav>
+
+    <!-- placar -->
+    <section class="card score" id="score">
+      <div class="score-h"><span class="lbl" id="score-t">BRASIL</span><span class="lbl mono" id="score-pst"></span></div>
+      <div class="cands">
+        <div class="cand azul" id="c-a">
+          <div class="c-name"><span class="num">22</span>Flávio Bolsonaro</div>
+          <div class="c-pct mono" id="pa">—</div>
+          <div class="c-vot mono" id="va">—</div>
+        </div>
+        <div class="cand vermelho" id="c-b">
+          <div class="c-name"><span class="num">13</span>Lula</div>
+          <div class="c-pct mono" id="pb">—</div>
+          <div class="c-vot mono" id="vb">—</div>
+        </div>
+      </div>
+      <div class="split"><i class="sa" id="sa"></i><i class="sb" id="sb"></i><b class="mid"></b></div>
+      <div class="diff small" id="diff">&nbsp;</div>
+      <dl class="stats" id="stats"></dl>
+    </section>
+
+    <!-- escola aberta -->
+    <section class="card" id="escola" hidden>
+      <div class="score-h">
+        <span class="lbl">ESCOLA</span>
+        <button class="chip" id="esc-fechar">Fechar</button>
+      </div>
+      <h2 class="esc-nome" id="esc-nome"></h2>
+      <div class="small muted" id="esc-sub"></div>
+      <div class="cands mini">
+        <div class="cand azul"><div class="c-name">Flávio</div><div class="c-pct mono" id="e-pa">—</div><div class="c-vot mono" id="e-va">—</div></div>
+        <div class="cand vermelho"><div class="c-name">Lula</div><div class="c-pct mono" id="e-pb">—</div><div class="c-vot mono" id="e-vb">—</div></div>
+      </div>
+      <div class="split"><i class="sa" id="e-sa"></i><i class="sb" id="e-sb"></i><b class="mid"></b></div>
+      <div class="small muted" id="e-status"></div>
+      <table class="tbl" id="e-tab"></table>
+    </section>
+
+    <!-- escolas -->
+    <section class="card" id="escolas" hidden>
+      <div class="score-h"><span class="lbl">ESCOLAS / LOCAIS DE VOTAÇÃO</span><span class="lbl mono" id="esc-n"></span></div>
+      <input type="search" id="esc-busca" placeholder="Buscar escola ou bairro…" autocomplete="off">
+      <div id="esc-aviso" class="aviso" hidden></div>
+      <ul class="esc-list" id="esc-list"></ul>
+    </section>
+
+    <!-- mapa -->
+    <section class="card mapa">
+      <div class="score-h"><span class="lbl">MAPA</span>
+        <span class="legend small"><i class="lg a"></i>Flávio <i class="lg b"></i>Lula <i class="lg n"></i>sem dados</span></div>
+      <svg id="mapa" role="group" aria-label="Mapa do Brasil por estado"></svg>
+      <div class="small muted">Intensidade da cor = vantagem no estado. Toque para abrir.</div>
+    </section>
+
+    <!-- lista de estados -->
+    <section class="card">
+      <div class="score-h"><span class="lbl">POR ESTADO</span>
+        <select id="ord" class="mini-sel" aria-label="Ordenar">
+          <option value="nome">A–Z</option><option value="a">Flávio %</option><option value="b">Lula %</option><option value="pst">Apurado</option><option value="ele">Eleitorado</option>
+        </select></div>
+      <ul class="uf-list" id="uf-list"></ul>
+    </section>
+
+    <footer class="foot small muted">
+      Dados: TSE — Divulgação de Resultados (resultados.tse.jus.br), eleição <span class="mono" id="f-ele"></span>.
+      Escolas: soma dos boletins de urna publicados pelo TSE. App independente, sem vínculo oficial.
+      <span id="modo"></span>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/mapa.js"></script>
+  <script src="js/ber.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
