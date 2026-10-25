@@ -35,7 +35,11 @@ jobs:
 
       - name: Gerar lista de escolas (locais de votação)
         continue-on-error: true
-        run: python3 tools/gerar_locais.py
+        run: |
+          python3 tools/gerar_locais.py 2>&1 | tee gerar.log
+          N=$(find data/locais -name '*.json' 2>/dev/null | wc -l)
+          echo "::notice title=Escolas::$N arquivos de municípios gerados. $(tail -1 gerar.log)"
+          rm -f gerar.log
 
       - uses: actions/configure-pages@v5
 
